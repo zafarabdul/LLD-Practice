@@ -161,17 +161,25 @@ class UserServiceManager{
         if(!isUserCreated()){
             cout<<"create user"<<endl;
         }
-        this->cart->addToCart(
-            this->invent->searchItem(itemId)
-            );
+        Item* it = this->invent->searchItem(itemId);
+        if(it){
+            this->cart->addToCart(it);
+        }
+        else {
+            cout<<"No Item Found";
+        }
     }
     void RemoveItemFromCart(int itemId){
         if(!isUserCreated()){
             cout<<"create user"<<endl;
         }
-        this->cart->removeFromCart(
-            this->invent->searchItem(itemId)
-            );
+        Item* it = this->invent->searchItem(itemId);
+        if(it){
+            this->cart->removeFromCart(it);
+        }
+        else {
+            cout<<"No Item Found";
+        }
     }
     void purchase(){
         if(!isUserCreated()){
@@ -201,6 +209,7 @@ int main() {
     UserServiceManager* USM1 = new UserServiceManager(Is);
     USM1->createUser(1234567890,"zafar","Hyderbad");
     USM1->AddItemToCart(2);
+    USM1->AddItemToCart(0);
     USM1->AddItemToCart(2);
     USM1->showCart();
     return 0;
