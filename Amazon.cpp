@@ -115,6 +115,28 @@ class Cart{
         return this->totalCost;
     }
 };
+class PaymentStrategy{
+    public:
+    virtual void pay(int cost) = 0;
+};
+class PaytmUPI:public PaymentStrategy{
+    public:
+    void pay(int cost) override{
+        cout<<cost<<" Paid Through Paytm UPI"<<endl;
+    }
+};
+class PhonePayUPI:public PaymentStrategy{
+    public:
+    void pay(int cost) override{
+        cout<<cost<<" Paid Through PhonePay UPI"<<endl;
+    }
+};
+class GPayUPI:public PaymentStrategy{
+    public:
+    void pay(int cost) override{
+        cout<<cost<<" Paid Through GPay UPI"<<endl;
+    }
+};
 class InventoryService{
     unordered_set<Item*>items;
     public:
@@ -159,6 +181,7 @@ class UserServiceManager{
     }
     void AddItemToCart(int itemId){
         if(!isUserCreated()){
+            return;
             cout<<"create user"<<endl;
         }
         Item* it = this->invent->searchItem(itemId);
@@ -172,6 +195,7 @@ class UserServiceManager{
     void RemoveItemFromCart(int itemId){
         if(!isUserCreated()){
             cout<<"create user"<<endl;
+            return;
         }
         Item* it = this->invent->searchItem(itemId);
         if(it){
@@ -181,15 +205,19 @@ class UserServiceManager{
             cout<<"No Item Found";
         }
     }
-    void purchase(){
+    void purchase(PaymentStrategy* pg){
         if(!isUserCreated()){
             cout<<"create user"<<endl;
+            return;
         }
         cout<<"Bought List is "<<endl;
         this->cart->printCart();
-        // this->cart->clearCart();
+        PaymentStrategy* p = pg;
+        p->pay(this->cart->getTotalCost());
+        this->cart->clearCart();
     }
 };
+
 int main() {
     // Amazon LLD
     // user 
@@ -212,5 +240,8 @@ int main() {
     USM1->AddItemToCart(0);
     USM1->AddItemToCart(2);
     USM1->showCart();
+    
+    //Buy cart
+    USM1->purchase(new PhonePayUPI());
     return 0;
 }
