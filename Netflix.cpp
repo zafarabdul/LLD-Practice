@@ -380,8 +380,10 @@ class NetflixManager{
         this->device = device;
     }
     void logout(){
-        this->currUser->decUserCount();
-        this->currUser = nullptr;
+        if(isLoggedIn()){
+            this->currUser->decUserCount();
+            this->currUser = nullptr;
+        }
     }
     void playVideo(int id){
         // clearScreen();
