@@ -13,6 +13,18 @@ class MovieIdGenerator{
         return this->movieId++;
     }
 };
+class UserIdGenerator{
+    int id=0;
+    UserIdGenerator(){}
+    public:
+    static UserIdGenerator* getInstance(){
+        static UserIdGenerator Instance;
+        return &Instance;
+    }
+    int getId(){
+        return this->id++;
+    }
+};
 class Movie{
     int movieId;
     string MovieName;
@@ -118,19 +130,26 @@ class MovieService{
         this->Repo->addMovie(new Movie(name,genre,l));
     }
     void removeMovie(int id){
-        this->Repo->removeMovie(
-            this->Repo->getMovieById(id)
-            );
+        Movie* mv = this->Repo->getMovieById(id);
+        if(mv){
+            this->Repo->removeMovie(mv);
+        }
     }
-    void showLists(){
+    void showLists(vector<Movie*>&movies){
         cout<<"------------------------List Of Movies------------------------"<<endl;
-        cout<<"Recently Added Movies"<<endl;
+        cout<<"New Movies On Netflix"<<endl;
         for(auto i:(this->Repo->getRecentMovies())){
             printMovie(i);
         }
+        if(movies.size()){
+            cout<<"Recently Watched Movies"<<endl;
+            for(auto i:movies){
+                printMovie(i);
+            }
+        }
         for(auto i:(this->Repo->getAllGenres())){
-            
-            cout<<"--- "<<i<<" Movies To Watch ---"<<endl;
+            cout<<endl;
+            cout<<"--- "<<i<<" Movies To Watch ------------------------------"<<endl;
             for(auto j:(this->Repo->getMovieByGenre(i))){
                 printMovie(j);
             }
@@ -140,12 +159,103 @@ class MovieService{
             printMovie(i);
         }
     }
+    Movie* getMovieById(int id){
+        return this->Repo->getMovieById(id);
+    }
+};
+class Subscription{
+    
+};
+class User{
+    int userId;
+    string gmail;
+    string password;
+    Subscription* subscriptionId;
+    vector<Movie*>History;
+    public:
+    User(string gmail,string password):
+    userId(UserIdGenerator::getInstance()->getId()),
+    gmail(gmail),password(password)
+    {
+        this->subscriptionId = nullptr;
+    }
+    vector<Movie*>& getHistory(){
+        return (this->History);
+    }
+    string getGmail(){
+        return this->gmail;
+    }
+    bool isPasswordSame(string password){
+        return (this->password) == password;
+    }
+    void addMovie(Movie* mv){
+        this->History.push_back(mv);
+    }
+    void setSubscription(Subscription* sub){
+        this->subscriptionId = sub;
+    }
+    void unSetSubscription(){
+        this->subscriptionId = nullptr;
+    }
+    bool isSubscribed(){
+        return (this->subscriptionId != nullptr);
+    }
+};
+class UserRepo{
+    vector<User*>users;
+    public:
+    User* addUser(string gmail,string password){
+        if(this->isDuplicateUser(gmail))return nullptr;
+        User* u = new User(gmail,password);
+        users.push_back(u);
+        return u;
+    }
+    void removeUser(User* u){
+        for(int i=0;i<(this->users.size());i++){
+            if(u == this->users[i]){
+                swap(this->users[i],this->users[(this->users.size())-1]);
+                this->users.pop_back();
+                return;
+            }
+        }
+    }
+    bool isDuplicateUser(string gmail){
+        for(auto i:users){
+            if(i->getGmail() == gmail)return true;
+        }
+        return false;
+    }
+    User* getUser(string gmail , string password){
+        for(auto i:(this->users)){
+            if(i->getGmail() == gmail && i->isPasswordSame(password))return i;
+        }
+        return nullptr;
+    }
 };
 class NetflixManager{
     MovieService* MovieSer = nullptr;
+    UserRepo* userRepo = nullptr;
+    User* currUser = nullptr;
+    bool isLoggedIn(){
+        if(currUser){
+            return true;
+        }
+        return false;
+    }
+    void printWatching(Movie* mv){
+        cout<<"----------------Playing-------------"<<endl;
+        cout<<"---------------------------------------------------------"<<endl;
+        cout<<"---------------------------------------------------------"<<endl;
+        cout<<"---------------------------------------------------------"<<endl;
+        cout<<"Currently Watching ------ "<<(mv->getMovieName())<<" ------------------------ "<<endl;
+        cout<<"---------------------------------------------------------"<<endl;
+        cout<<"---------------------------------------------------------"<<endl;
+        cout<<"---------------------------------------------------------"<<endl;
+    }
     public:
     NetflixManager(){
         this->MovieSer = new MovieService();
+        this->userRepo = new UserRepo();
     }
     void addMovie(string name,string genre,vector<string>l){
         this->MovieSer->addMovie(name,genre,l);
@@ -154,7 +264,36 @@ class NetflixManager{
         this->MovieSer->removeMovie(id);
     }
     void openHomePage(){
-        this->MovieSer->showLists();
+        if(!this->isLoggedIn())return;
+        this->MovieSer->showLists(
+            this->currUser->getHistory()
+            );
+    }
+    void login(string gmail,string password){
+        if(isLoggedIn())return;
+        currUser = userRepo->getUser(gmail,password);
+        if(!currUser){
+            cout<<"user or password does not exist"<<endl;
+        }
+    }
+    void signUp(string gmail,string password){
+        if(isLoggedIn())return;
+        currUser = userRepo->addUser(gmail,password);
+        if(!currUser){
+            cout<<"user already exists"<<endl;
+        }
+    }
+    void logout(){
+        this->currUser = nullptr;
+    }
+    void playVideo(int id){
+        // clearScreen();
+        Movie* movie = this->MovieSer->getMovieById(id);
+        if(movie){
+            this->currUser->addMovie(movie);
+            printWatching(movie);
+        }
+        else cout<<"Movie Not Found"<<endl;
     }
 };
 int main() {
@@ -167,12 +306,30 @@ int main() {
     // PaymentService
         // PaymentStrategy
         // PaymentPan
+        
+    //Movie Setup
     NetflixManager* NM = new NetflixManager();
     NM->addMovie("KGF","ACTION",{"HINDI","TELUGU","KANNADA"});
     NM->addMovie("RRR","ACTION",{"HINDI","TELUGU","KANNADA"});
     NM->addMovie("LOVE TODAY","DRAMA",{"HINDI","TELUGU","KANNADA"});
     NM->addMovie("AVATAR","SCIENCE FANTASY",{"HINDI","TELUGU","KANNADA"});
     NM->addMovie("OBSESSION","HORROR",{"ENGLISH"});
+    
+    //User Setup
+    NM->signUp("zafarabdul05@gmail.com","12345");
+    NM->logout();
+    NM->login("zafarabdul05@gmail.com","12345");
     NM->openHomePage();
+    
+    int id;
+    cout<<endl<<endl;
+    // repeat it for watching movies
+    // {
+    cout<<"----------enter id to watch: ";
+    cin>>id;
+    NM->playVideo(id);
+    // }
+    NM->openHomePage();
+    
     return 0;
 }
