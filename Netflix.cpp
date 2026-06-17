@@ -164,18 +164,90 @@ class MovieService{
     }
 };
 class Subscription{
-    
+    public:
+    virtual int getCost() = 0;
+    virtual bool canWatch(string device,int count) = 0;
+};
+class MobilePlan:public Subscription{
+    int cost = 149;
+    int maxWatch = 1;
+    vector<string> supportedDevices = {"MOBILE"};
+    public:
+    bool canWatch(string device,int count) override{
+        return device == "MOBILE" && count<=maxWatch;
+    }
+    int getCost() override {
+        return this->cost;
+    }
+};
+class BasicPlan:public Subscription{
+    int cost = 199;
+    int maxWatch = 1;
+    vector<string> supportedDevices = {"MOBILE","TV","COMPUTER","TABLET"};
+    public:
+    bool canWatch(string device,int count) override {
+        bool canW = false;
+        for(auto i:(this->supportedDevices)){
+            if(i == device){
+                canW = true;
+                break;
+            }
+        }
+        return canW && count<=maxWatch;
+    }
+    int getCost() override {
+        return this->cost;
+    }
+};
+class StandardPlan:public Subscription{
+    int cost = 499;
+    int maxWatch = 2;
+    vector<string> supportedDevices = {"MOBILE","TV","COMPUTER","TABLET"};
+    public:
+    bool canWatch(string device,int count) override{
+        bool canW = false;
+        for(auto i:(this->supportedDevices)){
+            if(i == device){
+                canW = true;
+                break;
+            }
+        }
+        return canW && count<=maxWatch;
+    }
+    int getCost() override {
+        return this->cost;
+    }
+};
+class PremiumPlan:public Subscription{
+    int cost = 649;
+    int maxWatch = 4;
+    vector<string> supportedDevices = {"MOBILE","TV","COMPUTER","TABLET"};
+    public:
+    bool canWatch(string device,int count) override {
+        bool canW = false;
+        for(auto i:(this->supportedDevices)){
+            if(i == device){
+                canW = true;
+                break;
+            }
+        }
+        return canW && count<=maxWatch;
+    }
+    int getCost() override {
+        return this->cost;
+    }
 };
 class User{
     int userId;
     string gmail;
     string password;
+    int liveUsers = 0;
     Subscription* subscriptionId;
     vector<Movie*>History;
     public:
     User(string gmail,string password):
     userId(UserIdGenerator::getInstance()->getId()),
-    gmail(gmail),password(password)
+    gmail(gmail),password(password),liveUsers(0)
     {
         this->subscriptionId = nullptr;
     }
@@ -188,6 +260,15 @@ class User{
     bool isPasswordSame(string password){
         return (this->password) == password;
     }
+    int getUserCount(){
+        return this->liveUsers;
+    }
+    void incUserCount(){
+        this->liveUsers++;
+    }
+    void decUserCount(){
+        this->liveUsers--;
+    }
     void addMovie(Movie* mv){
         this->History.push_back(mv);
     }
@@ -196,6 +277,11 @@ class User{
     }
     void unSetSubscription(){
         this->subscriptionId = nullptr;
+    }
+    bool canViewDevice(string device,int count=1){
+        if(!isSubscribed())return false;
+        if(this->subscriptionId->canWatch(device,count))return true;
+        return false;
     }
     bool isSubscribed(){
         return (this->subscriptionId != nullptr);
@@ -236,6 +322,7 @@ class NetflixManager{
     MovieService* MovieSer = nullptr;
     UserRepo* userRepo = nullptr;
     User* currUser = nullptr;
+    string device = "";
     bool isLoggedIn(){
         if(currUser){
             return true;
@@ -269,31 +356,70 @@ class NetflixManager{
             this->currUser->getHistory()
             );
     }
-    void login(string gmail,string password){
+    void login(string gmail,string password,string device){
         if(isLoggedIn())return;
         currUser = userRepo->getUser(gmail,password);
         if(!currUser){
             cout<<"user or password does not exist"<<endl;
+            return;
         }
+        this->device = device;
+        this->currUser->incUserCount();
     }
-    void signUp(string gmail,string password){
-        if(isLoggedIn())return;
+    void signUp(string gmail,string password,string device){
+        if(isLoggedIn()){
+            cout<<"Already Logged In";
+            return;
+        }
         currUser = userRepo->addUser(gmail,password);
         if(!currUser){
             cout<<"user already exists"<<endl;
+            return;
         }
+        this->currUser->incUserCount();
+        this->device = device;
     }
     void logout(){
+        this->currUser->decUserCount();
         this->currUser = nullptr;
     }
     void playVideo(int id){
         // clearScreen();
-        Movie* movie = this->MovieSer->getMovieById(id);
-        if(movie){
-            this->currUser->addMovie(movie);
-            printWatching(movie);
+        if(this->isLoggedIn() && this->currUser->isSubscribed() && this->currUser->canViewDevice(this->device,this->currUser->getUserCount())){
+            Movie* movie = this->MovieSer->getMovieById(id);
+            if(movie){
+                this->currUser->addMovie(movie);
+                printWatching(movie);
+            }
+            else cout<<"Movie Not Found"<<endl;
         }
-        else cout<<"Movie Not Found"<<endl;
+        else {
+            if((this->isLoggedIn()))cout<<"No Subscription Plan"<<endl;
+            else cout<<"Please Login"<<endl;
+        }
+    }
+    void subscribe(string plan){
+        if(this->isLoggedIn()){
+            Subscription* sc = nullptr;
+            if(plan == "MOBILE"){
+                sc = new MobilePlan();
+            }
+            else if(plan == "BASIC"){
+                sc = new BasicPlan();
+            }
+            else if (plan == "STANDARD"){
+                sc = new StandardPlan();
+            }
+            else if (plan == "PREMIUM"){
+                sc = new PremiumPlan();
+            }
+            else {
+                cout<<"No Such Plan";
+                return;
+            }
+            this->currUser->setSubscription(sc);
+        }
+        else cout<<"User Not Logged In"<<endl;
     }
 };
 int main() {
@@ -316,9 +442,13 @@ int main() {
     NM->addMovie("OBSESSION","HORROR",{"ENGLISH"});
     
     //User Setup
-    NM->signUp("zafarabdul05@gmail.com","12345");
+    NM->signUp("mohammed-abdul-zafar@gmail.com","12345","MOBILE");
     NM->logout();
-    NM->login("zafarabdul05@gmail.com","12345");
+    NM->login("mohammed-abdul-zafar@gmail.com","12345","MOBILE");
+    
+    //Buy Subscription
+    NM->subscribe("BASIC");
+    
     NM->openHomePage();
     
     int id;
@@ -329,6 +459,11 @@ int main() {
     cin>>id;
     NM->playVideo(id);
     // }
+    cout<<"----------enter id to watch: ";
+    cin>>id;
+    NM->playVideo(id);
+    
+    // U can see watch history here
     NM->openHomePage();
     
     return 0;
